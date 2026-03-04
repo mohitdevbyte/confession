@@ -116,6 +116,10 @@ app.post("/api/confessions/:id/react", async (req, res) => {
         const { id } = req.params;
         const { type } = req.body;
 
+        if (!supabaseUrl || !supabaseKey) {
+            return res.status(500).json({ error: "Internal Server Error: Missing Supabase credentials in Vercel environment variables." });
+        }
+
         // Safer IP detection for Vercel/Node
         const forwarded = req.headers["x-forwarded-for"];
         const ipString = typeof forwarded === "string"
@@ -135,7 +139,12 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             if (reactionErr.code === "23505") {
                 return res.status(403).json({ error: "You've already reacted to this confession" });
             }
-            throw reactionErr;
+            // Return specific DB error to help diagnostic (e.g. table missing)
+            return res.status(500).json({
+                error: "Database error during reaction",
+                message: reactionErr.message,
+                code: reactionErr.code
+            });
         }
 
         const { data: current, error: getErr } = await supabase
@@ -157,9 +166,12 @@ app.post("/api/confessions/:id/react", async (req, res) => {
 
         if (error) throw error;
         res.json(data);
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        res.status(500).json({ error: "Failed to react to confession" });
+        res.status(500).json({
+            error: "Failed to react to confession",
+            message: error.message || "Unknown error"
+        });
     }
 });
 
