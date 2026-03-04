@@ -53,3 +53,5 @@ CREATE TABLE IF NOT EXISTS confession_reactions (
 ALTER TABLE confession_reactions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read reactions" ON confession_reactions FOR SELECT USING (true);
 CREATE POLICY "Allow public insert reactions" ON confession_reactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update reactions" ON confession_reactions FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete reactions" ON confession_reactions FOR DELETE USING (true);

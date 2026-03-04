@@ -130,26 +130,10 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             return res.status(400).json({ error: "Invalid reaction type" });
         }
 
-        const { error: reactionErr } = await supabase
-            .from("confession_reactions")
-            .insert({ confession_id: Number(id), ip_address: ipString, reaction_type: type });
-
-        if (reactionErr) {
-            console.error("Reaction Insert Error:", reactionErr);
-            if (reactionErr.code === "23505") {
-                return res.status(403).json({ error: "You've already reacted to this confession" });
-            }
-            // Return specific DB error to help diagnostic (e.g. table missing)
-            return res.status(500).json({
-                error: "Database error during reaction",
-                message: reactionErr.message,
-                code: reactionErr.code
-            });
-        }
-
+        // Get current counts first
         const { data: current, error: getErr } = await supabase
             .from("confessions")
-            .select(type)
+            .select("likes, skull, fire")
             .eq("id", id)
             .single();
 
@@ -157,15 +141,76 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             return res.status(404).json({ error: "Confession not found" });
         }
 
-        const { data, error } = await supabase
-            .from("confessions")
-            .update({ [type]: Number(current[type] || 0) + 1 })
-            .eq("id", id)
-            .select()
-            .single();
+        // Check if user has already reacted
+        const { data: existingReaction, error: fetchErr } = await supabase
+            .from("confession_reactions")
+            .select("*")
+            .eq("confession_id", Number(id))
+            .eq("ip_address", ipString)
+            .maybeSingle();
 
-        if (error) throw error;
-        res.json(data);
+        if (fetchErr) {
+            return res.status(500).json({ error: "Database error checking reactions", message: fetchErr.message });
+        }
+
+        if (existingReaction) {
+            if (existingReaction.reaction_type === type) {
+                // Toggle off the same reaction
+                await supabase.from("confession_reactions").delete().eq("id", existingReaction.id);
+                const updatedCount = Math.max(0, Number(current[type] || 0) - 1);
+
+                const { data, error } = await supabase
+                    .from("confessions")
+                    .update({ [type]: updatedCount })
+                    .eq("id", id)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                return res.json(data);
+            } else {
+                // Change reaction
+                const oldType = existingReaction.reaction_type;
+                await supabase.from("confession_reactions").update({ reaction_type: type }).eq("id", existingReaction.id);
+
+                const oldUpdatedCount = Math.max(0, Number(current[oldType] || 0) - 1);
+                const newUpdatedCount = Number(current[type] || 0) + 1;
+
+                const { data, error } = await supabase
+                    .from("confessions")
+                    .update({
+                        [oldType]: oldUpdatedCount,
+                        [type]: newUpdatedCount
+                    }).eq("id", id).select().single();
+
+                if (error) throw error;
+                return res.json(data);
+            }
+        } else {
+            // New reaction
+            const { error: reactionErr } = await supabase
+                .from("confession_reactions")
+                .insert({ confession_id: Number(id), ip_address: ipString, reaction_type: type });
+
+            if (reactionErr) {
+                return res.status(500).json({
+                    error: "Database error during reaction",
+                    message: reactionErr.message,
+                    code: reactionErr.code
+                });
+            }
+
+            const newUpdatedCount = Number(current[type] || 0) + 1;
+            const { data, error } = await supabase
+                .from("confessions")
+                .update({ [type]: newUpdatedCount })
+                .eq("id", id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return res.json(data);
+        }
     } catch (error: any) {
         console.error(error);
         res.status(500).json({
