@@ -115,8 +115,12 @@ app.post("/api/confessions/:id/react", async (req, res) => {
     try {
         const { id } = req.params;
         const { type } = req.body;
-        const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-        const ipString = Array.isArray(ip) ? ip[0] : ip || "unknown";
+
+        // Safer IP detection for Vercel/Node
+        const forwarded = req.headers["x-forwarded-for"];
+        const ipString = typeof forwarded === "string"
+            ? forwarded.split(",")[0]
+            : req.socket?.remoteAddress || "unknown";
 
         if (!["likes", "skull", "fire"].includes(type)) {
             return res.status(400).json({ error: "Invalid reaction type" });
@@ -127,6 +131,7 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             .insert({ confession_id: Number(id), ip_address: ipString, reaction_type: type });
 
         if (reactionErr) {
+            console.error("Reaction Insert Error:", reactionErr);
             if (reactionErr.code === "23505") {
                 return res.status(403).json({ error: "You've already reacted to this confession" });
             }
