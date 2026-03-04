@@ -39,14 +39,14 @@ CREATE POLICY "Allow public insert comments" ON comments FOR INSERT WITH CHECK (
 alter publication supabase_realtime add table confessions;
 alter publication supabase_realtime add table comments;
 
--- Reactions tracking table (for IP-based limiting)
+-- Reactions tracking table (for Device-based limiting)
 CREATE TABLE IF NOT EXISTS confession_reactions (
   id BIGSERIAL PRIMARY KEY,
   confession_id BIGINT NOT NULL REFERENCES confessions(id) ON DELETE CASCADE,
-  ip_address TEXT NOT NULL,
+  device_id TEXT NOT NULL,
   reaction_type TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(confession_id, ip_address)
+  UNIQUE(confession_id, device_id)
 );
 
 -- Enable RLS for reactions

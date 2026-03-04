@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { motion } from "motion/react";
 import { ArrowLeft, Send, Ghost } from "lucide-react";
 import ConfessionCard from "../components/ConfessionCard";
-import { Confession, Comment, formatTimeAgo } from "../lib/utils";
+import { Confession, Comment, formatTimeAgo, getDeviceId } from "../lib/utils";
 
 export default function ConfessionView() {
   const [, params] = useRoute<{ id: string }>("/confession/:id");
@@ -36,11 +36,14 @@ export default function ConfessionView() {
   const handleReact = async (confessionId: number, type: "likes" | "skull" | "fire") => {
     if (!confession) return;
     setConfession({ ...confession, [type]: (confession[type] || 0) + 1 });
-    
+
     try {
-      await fetch(`/api/confessions/${confessionId}/react`, { 
+      await fetch(`/api/confessions/${id}/react`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": getDeviceId()
+        },
         body: JSON.stringify({ type })
       });
     } catch (err) {
@@ -61,7 +64,7 @@ export default function ConfessionView() {
       });
 
       if (!res.ok) throw new Error("Failed to post comment");
-      
+
       const created = await res.json();
       setComments([...comments, created]);
       setNewComment("");
@@ -94,10 +97,10 @@ export default function ConfessionView() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 sm:py-20">
-        <button 
-          onClick={() => window.history.back()}
-          className="mb-8 flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-300"
-        >
+      <button
+        onClick={() => window.history.back()}
+        className="mb-8 flex items-center gap-2 text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-300"
+      >
         <ArrowLeft className="h-4 w-4" />
         Back
       </button>
@@ -134,7 +137,7 @@ export default function ConfessionView() {
 
         <div className="space-y-6">
           {comments.map((comment) => (
-            <motion.div 
+            <motion.div
               key={comment.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -146,7 +149,7 @@ export default function ConfessionView() {
               </div>
             </motion.div>
           ))}
-          
+
           {comments.length === 0 && (
             <div className="py-12 text-center text-zinc-600">
               No comments yet. Be the first to react.

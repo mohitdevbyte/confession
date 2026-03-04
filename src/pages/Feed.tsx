@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Ghost, AlertCircle, Flame, Clock } from "lucide-react";
 import ConfessionCard from "../components/ConfessionCard";
-import { Confession, ACCENTS } from "../lib/utils";
+import { Confession, ACCENTS, getDeviceId } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
 export default function Feed() {
@@ -99,7 +99,10 @@ export default function Feed() {
     try {
       await fetch(`/api/confessions/${id}/react`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": getDeviceId()
+        },
         body: JSON.stringify({ type })
       });
     } catch (err) {

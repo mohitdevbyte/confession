@@ -37,3 +37,12 @@ export interface Comment {
   content: string;
   created_at: string;
 }
+
+export function getDeviceId(): string {
+  let deviceId = localStorage.getItem("campus_whisper_device_id");
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem("campus_whisper_device_id", deviceId);
+  }
+  return deviceId;
+}

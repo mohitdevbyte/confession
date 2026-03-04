@@ -120,11 +120,11 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             return res.status(500).json({ error: "Internal Server Error: Missing Supabase credentials in Vercel environment variables." });
         }
 
-        // Safer IP detection for Vercel/Node
-        const forwarded = req.headers["x-forwarded-for"];
-        const ipString = typeof forwarded === "string"
-            ? forwarded.split(",")[0]
-            : req.socket?.remoteAddress || "unknown";
+        // Use Device ID instead of IP for campus Wi-Fi compatibility
+        const deviceId = req.headers["x-device-id"];
+        if (!deviceId || typeof deviceId !== "string") {
+            return res.status(400).json({ error: "Missing Device ID" });
+        }
 
         if (!["likes", "skull", "fire"].includes(type)) {
             return res.status(400).json({ error: "Invalid reaction type" });
@@ -146,7 +146,7 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             .from("confession_reactions")
             .select("*")
             .eq("confession_id", Number(id))
-            .eq("ip_address", ipString)
+            .eq("device_id", deviceId)
             .maybeSingle();
 
         if (fetchErr) {
@@ -190,7 +190,7 @@ app.post("/api/confessions/:id/react", async (req, res) => {
             // New reaction
             const { error: reactionErr } = await supabase
                 .from("confession_reactions")
-                .insert({ confession_id: Number(id), ip_address: ipString, reaction_type: type });
+                .insert({ confession_id: Number(id), device_id: deviceId, reaction_type: type });
 
             if (reactionErr) {
                 return res.status(500).json({

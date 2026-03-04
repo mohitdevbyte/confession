@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Flame, Ghost, TrendingUp, Clock, Search, SlidersHorizontal, X } from "lucide-react";
 import ConfessionCard from "../components/ConfessionCard";
-import { Confession } from "../lib/utils";
+import { Confession, getDeviceId } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
 type SortMode = "latest" | "trending";
@@ -63,7 +63,10 @@ export default function Trending() {
     try {
       await fetch(`/api/confessions/${id}/react`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": getDeviceId()
+        },
         body: JSON.stringify({ type })
       });
     } catch (err) {
